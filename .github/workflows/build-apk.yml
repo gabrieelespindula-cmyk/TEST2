@@ -1,0 +1,56 @@
+name: Gerar APK Android
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:   # permite rodar manualmente pelo botão "Run workflow"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Conferir estrutura do projeto
+        run: |
+          test -f lib/services/sync_service.dart || { echo "ERRO: a pasta lib do Sabor de Casa não está na raiz do repositório"; exit 1; }
+
+      # O repositório só tem o código (lib/ e pubspec.yaml); aqui geramos a pasta android/
+      - name: Gerar projeto Android
+        run: flutter create . --platforms=android --project-name sabor_de_casa --org br.com.sabordecasa
+
+      # Permissão de internet + permitir http:// (API de desenvolvimento) + nome do app
+      - name: Ajustar AndroidManifest
+        run: |
+          python3 - <<'PY'
+          p = 'android/app/src/main/AndroidManifest.xml'
+          s = open(p, encoding='utf-8').read()
+          if 'android.permission.INTERNET' not in s:
+              s = s.replace('<application',
+                '<uses-permission android:name="android.permission.INTERNET"/>\n    <application', 1)
+          if 'usesCleartextTraffic' not in s:
+              s = s.replace('<application', '<application android:usesCleartextTraffic="true"', 1)
+          s = s.replace('android:label="sabor_de_casa"', 'android:label="Sabor de Casa"')
+          open(p, 'w', encoding='utf-8').write(s)
+          PY
+
+      - run: flutter pub get
+
+      - name: Compilar APK
+        run: flutter build apk --release
+
+      - name: Publicar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: sabor-de-casa-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
