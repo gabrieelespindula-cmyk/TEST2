@@ -75,6 +75,70 @@ class _VendaRegistrarScreenState extends State<VendaRegistrarScreen> {
     });
   }
 
+  // NOVO: Método para abrir o diálogo e escolher a quantidade exata
+  void _alterarQuantidadeDireta(Produto p) {
+    final qtdAtual = _carrinho[p.id]?.quantidade ?? 0;
+    final controller = TextEditingController(text: qtdAtual > 0 ? '$qtdAtual' : '1');
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Quantidade para ${p.nome}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Disponível em estoque: ${p.quantidadeEstoque}', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                keyboardType: TextInputType.number,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  labelText: 'Quantidade',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final novaQtd = int.tryParse(controller.text);
+                if (novaQtd == null || novaQtd < 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Digite um número válido.')));
+                  return;
+                }
+                if (novaQtd > p.quantidadeEstoque) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Quantidade excede o estoque disponível (${p.quantidadeEstoque} un.).')));
+                  return;
+                }
+
+                setState(() {
+                  if (novaQtd == 0) {
+                    _carrinho.remove(p.id);
+                  } else if (_carrinho.containsKey(p.id)) {
+                    _carrinho[p.id]!.quantidade = novaQtd;
+                  } else {
+                    _carrinho[p.id!] = ItemCarrinho(produto: p, quantidade: novaQtd);
+                  }
+                });
+
+                Navigator.pop(context);
+              },
+              child: const Text('Confirmar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _finalizarVenda() async {
     if (_carrinho.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Adicione pelo menos um produto à venda.')));
@@ -145,11 +209,23 @@ class _VendaRegistrarScreenState extends State<VendaRegistrarScreen> {
                                       ),
                                     ),
                                     if (qtdNoCarrinho == 0)
-                                      IconButton.filled(onPressed: () => _adicionar(p), icon: const Icon(Icons.add), style: IconButton.styleFrom(backgroundColor: AppColors.primary))
+                                      IconButton.filled(
+                                        onPressed: () => _alterarQuantidadeDireta(p), // Alterado para abrir o diálogo direto
+                                        icon: const Icon(Icons.add), 
+                                        style: IconButton.styleFrom(backgroundColor: AppColors.primary),
+                                        tooltip: 'Adicionar quantidade',
+                                      )
                                     else
                                       Row(mainAxisSize: MainAxisSize.min, children: [
                                         IconButton(onPressed: () => _remover(p), icon: const Icon(Icons.remove_circle_outline), color: AppColors.danger),
-                                        Text('$qtdNoCarrinho', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                        // Ao clicar no número, também abre o diálogo para digitar direto
+                                        InkWell(
+                                          onTap: () => _alterarQuantidadeDireta(p),
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            child: Text('$qtdNoCarrinho', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                          ),
+                                        ),
                                         IconButton(onPressed: () => _adicionar(p), icon: const Icon(Icons.add_circle_outline), color: AppColors.secondary),
                                       ]),
                                   ],
