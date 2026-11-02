@@ -58,16 +58,34 @@ class _ProdutoFormScreenState extends State<ProdutoFormScreen> {
         );
         await _service.atualizar(atualizado);
       } else {
-        final novo = Produto(nome: _nomeController.text.trim(), preco: preco, quantidadeEstoque: estoque, categoria: _categoriaController.text.trim());
+        final novo = Produto(
+          nome: _nomeController.text.trim(), 
+          preco: preco, 
+          quantidadeEstoque: estoque, 
+          categoria: _categoriaController.text.trim(),
+        );
         await _service.criar(novo);
       }
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_editando ? 'Produto atualizado com sucesso!' : 'Produto cadastrado com sucesso!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_editando ? 'Produto atualizado com sucesso!' : 'Produto cadastrado com sucesso!'),
+          backgroundColor: Colors.green,
+        ),
+      );
       Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro: $e')));
+      
+      // Exibe a mensagem completa do erro diretamente no telemóvel por mais tempo
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Falha ao salvar: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 8),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _salvando = false);
     }
