@@ -38,8 +38,6 @@ class Produto {
     );
   }
 
-  /// Payload vindo/indo da API (nomes de campo em camelCase, iguais ao JSON
-  /// retornado pelos ApiControllers em C#)
   factory Produto.fromApiJson(Map<String, dynamic> json) {
     return Produto(
       id: json['id'] as int?,
