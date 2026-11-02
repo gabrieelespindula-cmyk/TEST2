@@ -49,13 +49,19 @@ class Produto {
   }
 
   Map<String, dynamic> toApiJson() {
-    return {
-      'id': id,
+    final mapa = <String, dynamic>{
       'nome': nome,
       'preco': preco,
       'quantidadeEstoque': quantidadeEstoque,
       'categoria': categoria,
     };
+
+    // Só envia o 'id' para a API se ele existir (evita enviar null no cadastro)
+    if (id != null) {
+      mapa['id'] = id;
+    }
+
+    return mapa;
   }
 
   Produto copyWith({
