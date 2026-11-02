@@ -102,13 +102,18 @@ class ProdutoService {
 
     if (await _connectivity.apiEstaDisponivel()) {
       try {
-        final resposta = await _api.post('/api/produto', produto.toApiJson());
+        final payload = produto.toApiJson();
+        print('=== ENVIANDO PARA API /api/produto: $payload');
+        
+        final resposta = await _api.post('/api/produto', payload);
+        
         final criado = Produto.fromApiJson(resposta as Map<String, dynamic>);
         await db.insert('produtos', criado.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
         DataNotifier.bump();
         return criado.id!;
-      } on ApiIndisponivelException {
-        // segue para criação offline
+      } catch (e) {
+        print('=== ERRO DETALHADO AO CADASTRAR PRODUTO NA API: $e');
+        rethrow;
       }
     }
 
