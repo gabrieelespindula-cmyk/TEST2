@@ -20,6 +20,7 @@ class _ProdutoFormScreenState extends State<ProdutoFormScreen> {
   late final TextEditingController _categoriaController;
 
   bool _salvando = false;
+  bool _excluindo = false;
   bool get _editando => widget.produto != null;
 
   @override
@@ -78,7 +79,6 @@ class _ProdutoFormScreenState extends State<ProdutoFormScreen> {
     } catch (e) {
       if (!mounted) return;
       
-      // Exibe a mensagem completa do erro diretamente no telemóvel por mais tempo
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Falha ao salvar: $e'),
@@ -88,6 +88,59 @@ class _ProdutoFormScreenState extends State<ProdutoFormScreen> {
       );
     } finally {
       if (mounted) setState(() => _salvando = false);
+    }
+  }
+
+  // Função para excluir o produto no APK via API
+  Future<void> _excluir() async {
+    if (widget.produto?.id == null) return;
+
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Excluir Produto'),
+        content: const Text('Tem certeza de que deseja excluir este produto do estoque?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Excluir'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar != true) return;
+
+    setState(() => _excluindo = true);
+
+    try {
+      // Certifique-se de que o seu ProdutoService possui o método excluir(int id) implementado
+      await _service.excluir(widget.produto!.id!);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Produto excluído com sucesso!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Falha ao excluir: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 8),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _excluindo = false);
     }
   }
 
@@ -138,12 +191,30 @@ class _ProdutoFormScreenState extends State<ProdutoFormScreen> {
                 textCapitalization: TextCapitalization.words,
               ),
               const SizedBox(height: 28),
+              
+              // Botão Salvar / Cadastrar
               ElevatedButton(
-                onPressed: _salvando ? null : _salvar,
+                onPressed: (_salvando || _excluindo) ? null : _salvar,
                 child: _salvando
                     ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
                     : Text(_editando ? 'Salvar alterações' : 'Cadastrar produto'),
               ),
+
+              // Botão Excluir (Aparece apenas se estiver editando um produto existente)
+              if (_editando) ...[
+                const SizedBox(height: 12),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: (_salvando || _excluindo) ? null : _excluir,
+                  icon: _excluindo
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Icon(Icons.delete),
+                  label: const Text('Excluir Produto'),
+                ),
+              ],
             ],
           ),
         ),
