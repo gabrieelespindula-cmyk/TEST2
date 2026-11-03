@@ -194,8 +194,28 @@ class ProdutoService {
     return result.map((m) => Produto.fromMap(m)).toList();
   }
 
+  // Exclusão de produtos (com suporte offline-first e fila de sincronização)
   Future<void> excluir(int id) async {
     final db = await DatabaseHelper.instance.database;
     await db.delete('produtos', where: 'id = ?', whereArgs: [id]);
+    DataNotifier.bump();
+
+    if (await _connectivity.apiEstaDisponivel()) {
+      try {
+        await _api.delete('/api/produto/$id');
+        return;
+      } on ApiIndisponivelException {
+        // segue para a fila se a API estiver indisponível
+      } catch (e) {
+        // outros erros de rede/api também direcionam para a fila de sincronização
+      }
+    }
+
+    await _fila.adicionar(
+      tipo: 'produto',
+      operacao: 'excluir',
+      payload: {'id': id},
+      referenciaLocalId: id,
+    );
   }
 }
